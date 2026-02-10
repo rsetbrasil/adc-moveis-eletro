@@ -18,6 +18,8 @@ import { createOrderAction } from '@/app/actions/checkout';
 import { getProductsAction } from '@/app/actions/data';
 import { resetOrdersAction, resetProductsAction, resetFinancialsAction, resetAllAdminDataAction, importProductsAction, importCustomersAction, emptyTrashAction, restoreProductAction, permanentlyDeleteProductWithIdAction, fetchDeletedProductsAction } from '@/app/actions/admin/system';
 import { addCustomerAction, getCustomersAction, updateCustomerAction, deleteCustomerAction, generateCustomerCodesAction } from '@/app/actions/admin/customers';
+import { getCommissionPaymentsAction, payCommissionAction, reverseCommissionPaymentAction } from '@/app/actions/admin/financials';
+import { addCategoryAction, deleteCategoryAction, updateCategoryNameAction, addSubcategoryAction, updateSubcategoryAction, deleteSubcategoryAction } from '@/app/actions/admin/categories';
 
 type LogAction = (action: string, details: string, user: User | null) => void;
 
@@ -269,8 +271,8 @@ export const AdminProvider = ({ children }: { children: ReactNode }) => {
   const generateCustomerCodes = async (logAction: LogAction, user: User | null) => {
     const res = await generateCustomerCodesAction(user);
     if (res.success) {
-      logAction('Códigos Gerados', `Gerados códigos para ${res.count} clientes.`, user);
-      return { newCustomers: res.count, updatedOrders: 0 };
+      logAction('Códigos Gerados', `Gerados códigos para ${res.count || 0} clientes.`, user);
+      return { newCustomers: res.count || 0, updatedOrders: 0 };
     }
     return { newCustomers: 0, updatedOrders: 0 };
   };
@@ -415,9 +417,33 @@ export const AdminProvider = ({ children }: { children: ReactNode }) => {
     const res = await reverseCommissionPaymentAction(paymentId, user);
     if (res.success) logAction('Estorno de Comissão', `Pagamento ${paymentId} estornado.`, user);
   };
+  const saveStockAudit = async (audit: StockAudit, logAction: LogAction, user: User | null) => {
+    const res = await saveStockAuditAction(audit, user);
+    if (res.success) {
+      logAction('Auditoria Salva', `Auditoria de estoque salva.`, user);
+      setStockAudits(prev => [...prev.filter(a => a.id !== audit.id), audit]);
+    }
+  };
+  const addAvaria = async (avaria: any, logAction: LogAction, user: User | null) => {
+    const res = await addAvariaAction(avaria, user);
+    if (res.success) {
+      logAction('Avaria Adicionada', `Avaria adicionada.`, user);
+      setAvarias(prev => [...prev, avaria]);
+    }
+  };
+  const updateAvaria = async (id: string, data: any, logAction: LogAction, user: User | null) => {
+    const res = await updateAvariaAction(id, data, user);
+    if (res.success) {
+      logAction('Avaria Atualizada', `Avaria atualizada.`, user);
+      setAvarias(prev => prev.map(a => a.id === id ? { ...a, ...data } : a));
+    }
+  };
   const deleteAvaria = async (id: string, logAction: LogAction, user: User | null) => {
     const res = await deleteAvariaAction(id, user);
-    if (res.success) logAction('Avaria Excluída', `Avaria excluída.`, user);
+    if (res.success) {
+      logAction('Avaria Excluída', `Avaria excluída.`, user);
+      setAvarias(prev => prev.filter(a => a.id !== id));
+    }
   };
   const emptyTrash = async (logAction: LogAction, user: User | null) => {
     await emptyTrashAction(user);
