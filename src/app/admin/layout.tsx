@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { useTheme } from 'next-themes';
 import { PermissionsProvider } from '@/context/PermissionsContext';
 import { AdminProvider } from '@/context/AdminContext';
@@ -33,13 +34,27 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const { user, logout, isLoading } = useAuth();
   const { resolvedTheme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
+  const router = useRouter();
+
+  // Hooks devem ser chamados sempre na mesma ordem (antes de qualquer return condicional)
+  const isDark = mounted && resolvedTheme === 'dark';
+  const userRoleLabel = useMemo(() => (user?.role ? getRoleLabel(user.role) : ''), [user?.role]);
 
   useEffect(() => {
     setMounted(true);
   }, []);
 
-  const isDark = mounted && resolvedTheme === 'dark';
-  const userRoleLabel = useMemo(() => (user?.role ? getRoleLabel(user.role) : ''), [user?.role]);
+  // Verificar autenticação e redirecionar se necessário
+  useEffect(() => {
+    if (!isLoading && !user) {
+      router.replace('/login');
+    }
+  }, [isLoading, user, router]);
+
+  // Não renderizar nada se não estiver autenticado (redireciona silenciosamente)
+  if (!user) {
+    return null;
+  }
 
   return (
     <PermissionsProvider>
