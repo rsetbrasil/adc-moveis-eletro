@@ -2,7 +2,7 @@
 'use server';
 
 import { db } from '@/lib/db';
-import { Order, Customer } from '@/lib/types';
+import { Order } from '@/lib/types';
 
 export async function getOrderForCarnetAction(orderId: string) {
     try {
