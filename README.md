@@ -20,3 +20,11 @@ This project is built with Next.js, TypeScript, and Tailwind CSS, utilizing shad
 - **Recycle bin**: deletions move the record from `customers` to `customersTrash` with deletion metadata.
 - **Access control**: only `admin` and `gerente` can access and restore from the customer trash.
 - **Audit logs**: operations that move/restore customer records from the trash are logged via the audit system.
+
+## 📚 Documentation
+
+Complete documentation for development, deployment, and data migration can be found in the [docs/ folder](./docs/README.md).
+
+- [Deployment Guide](./docs/vps_deployment_guide.md)
+- [Data Migration Guide](./docs/data_migration_guide.md)
+
