@@ -21,7 +21,7 @@ export async function getOrderForCarnetAction(orderId: string) {
             installmentDetails: typeof orderRecord.installmentDetails === 'string' ? JSON.parse(orderRecord.installmentDetails) : orderRecord.installmentDetails,
             customer: typeof orderRecord.customer === 'string' ? JSON.parse(orderRecord.customer) : orderRecord.customer,
             asaas: typeof orderRecord.asaas === 'string' ? JSON.parse(orderRecord.asaas) : orderRecord.asaas,
-        } as Order;
+        } as unknown as Order;
 
         // Populate customer details if missing
         const cpf = (order.customer?.cpf || '').replace(/\D/g, '');
