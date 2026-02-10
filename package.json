@@ -7,6 +7,7 @@
     "db:push": "prisma db push",
     "test:db": "tsx check-db.ts",
     "migrate": "tsx scripts/migrate-data.ts",
+    "migrate:vps": "tsx scripts/migrate-to-mysql-vps.ts",
     "genkit:dev": "genkit start -- tsx src/ai/dev.ts",
     "genkit:watch": "genkit start -- tsx --watch src/ai/dev.ts",
     "build": "next build",
