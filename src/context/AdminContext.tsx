@@ -18,7 +18,7 @@ import { createOrderAction } from '@/app/actions/checkout';
 import { getProductsAction } from '@/app/actions/data';
 import { resetOrdersAction, resetProductsAction, resetFinancialsAction, resetAllAdminDataAction, importProductsAction, importCustomersAction, emptyTrashAction, restoreProductAction, permanentlyDeleteProductWithIdAction, fetchDeletedProductsAction } from '@/app/actions/admin/system';
 import { addCustomerAction, getCustomersAction, updateCustomerAction, deleteCustomerAction, generateCustomerCodesAction } from '@/app/actions/admin/customers';
-import { getCommissionPaymentsAction, payCommissionAction, reverseCommissionPaymentAction } from '@/app/actions/admin/financials';
+import { payCommissionAction, reverseCommissionPaymentAction } from '@/app/actions/admin/financials';
 import { addCategoryAction, deleteCategoryAction, updateCategoryNameAction, addSubcategoryAction, updateSubcategoryAction, deleteSubcategoryAction } from '@/app/actions/admin/categories';
 
 type LogAction = (action: string, details: string, user: User | null) => void;
@@ -138,7 +138,7 @@ export const AdminProvider = ({ children }: { children: ReactNode }) => {
     }
 
     // Commission Payments
-    const commRes = await getCommissionPaymentsAction();
+    const commRes = await import('@/app/actions/admin/financials').then((mod) => mod.getCommissionPaymentsAction());
     if (commRes.success && commRes.data) {
       setCommissionPayments(commRes.data);
     }
