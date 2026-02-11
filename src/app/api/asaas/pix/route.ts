@@ -1,16 +1,11 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { onlyDigits } from '@/lib/utils';
-import { createClient } from '@supabase/supabase-js';
+import { db } from '@/lib/db';
 import type { AsaasSettings } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
-
-// Cria cliente Supabase para uso server-side
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
-const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
 const requestSchema = z.object({
   orderId: z.string().min(1),
@@ -148,13 +143,7 @@ export async function POST(request: Request) {
   };
 
   try {
-    // Buscar configurações do Asaas no Supabase
-    const { data: settingsData } = await supabase
-      .from('config')
-      .select('value')
-      .eq('key', 'asaasSettings')
-      .maybeSingle();
-
+    const settingsData = await db.config.findUnique({ where: { key: 'asaasSettings' } });
     const asaasSettings = settingsData?.value as AsaasSettings | null;
 
     const env = resolveAsaasEnv(process.env.ASAAS_ENV || asaasSettings?.env);
@@ -164,15 +153,20 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'ASAAS_ACCESS_TOKEN não configurado.' }, { status: 500 });
     }
 
-    // Verificar se já existe pagamento para este pedido
-    const { data: existingPayment } = await supabase
-      .from('asaas_payments')
-      .select('*')
-      .eq('orderId', orderId)
-      .maybeSingle();
-
-    if (existingPayment) {
-      return NextResponse.json(existingPayment);
+    const existingOrder = await db.order.findUnique({
+      where: { id: orderId },
+      select: { asaas: true },
+    });
+    const existingAsaas = (existingOrder?.asaas || null) as any;
+    if (existingAsaas?.pix?.payload) {
+      return NextResponse.json({
+        orderId,
+        asaasCustomerId: existingAsaas.customerId || null,
+        asaasPaymentId: existingAsaas.paymentId || null,
+        status: existingAsaas.status || null,
+        pix: existingAsaas.pix || {},
+        createdAt: existingAsaas.createdAt || existingAsaas.updatedAt || null,
+      });
     }
 
     const asaasCustomerId = await upsertCustomerId(baseUrl, token, cpfCnpjDigits, customerPayload);
@@ -222,19 +216,9 @@ export async function POST(request: Request) {
       createdAt: new Date().toISOString(),
     };
 
-    // Salvar no Supabase
-    await supabase
-      .from('asaas_payments')
-      .upsert(responseData, { onConflict: 'orderId' });
-
-    await supabase
-      .from('asaas_payment_map')
-      .upsert({ paymentId: payment.id, orderId }, { onConflict: 'paymentId' });
-
-    // Atualizar pedido com dados do Asaas
-    await supabase
-      .from('orders')
-      .update({
+    await db.order.update({
+      where: { id: orderId },
+      data: {
         asaas: {
           customerId: asaasCustomerId,
           paymentId: payment.id,
@@ -244,10 +228,11 @@ export async function POST(request: Request) {
             encodedImage: qr.encodedImage || null,
             expirationDate: qr.expirationDate || null,
           },
+          createdAt: responseData.createdAt,
           updatedAt: new Date().toISOString(),
         },
-      })
-      .eq('id', orderId);
+      },
+    });
 
     return NextResponse.json(responseData);
   } catch (e) {

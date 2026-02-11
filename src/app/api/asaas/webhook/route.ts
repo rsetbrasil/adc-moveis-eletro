@@ -1,15 +1,10 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
-import { createClient } from '@supabase/supabase-js';
+import { db } from '@/lib/db';
 import type { AsaasSettings } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
-
-// Cria cliente Supabase para uso server-side
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
-const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
 const webhookSchema = z.object({
   event: z.string().min(1),
@@ -52,12 +47,7 @@ export async function POST(request: Request) {
     // Buscar token do webhook nas configurações
     let expectedToken = (process.env.ASAAS_WEBHOOK_TOKEN || '').trim();
     if (!expectedToken) {
-      const { data: settingsData } = await supabase
-        .from('config')
-        .select('value')
-        .eq('key', 'asaasSettings')
-        .maybeSingle();
-
+      const settingsData = await db.config.findUnique({ where: { key: 'asaasSettings' } });
       if (settingsData?.value) {
         const settings = settingsData.value as AsaasSettings;
         expectedToken = (settings.webhookToken || '').trim();
@@ -71,15 +61,17 @@ export async function POST(request: Request) {
 
     let orderId = externalReference;
     if (!orderId) {
-      // Buscar mapeamento de pagamento
-      const { data: mapData } = await supabase
-        .from('asaas_payment_map')
-        .select('orderId')
-        .eq('paymentId', paymentId)
-        .maybeSingle();
-
-      if (mapData) {
-        orderId = String(mapData.orderId || '');
+      const orderByPayment = await db.order.findFirst({
+        where: {
+          asaas: {
+            path: '$.paymentId',
+            equals: paymentId,
+          },
+        },
+        select: { id: true },
+      });
+      if (orderByPayment?.id) {
+        orderId = orderByPayment.id;
       }
     }
 
@@ -87,12 +79,10 @@ export async function POST(request: Request) {
       return NextResponse.json({ ok: true });
     }
 
-    // Buscar pedido existente
-    const { data: orderData } = await supabase
-      .from('orders')
-      .select('asaas')
-      .eq('id', orderId)
-      .maybeSingle();
+    const orderData = await db.order.findUnique({
+      where: { id: orderId },
+      select: { asaas: true },
+    });
 
     if (!orderData) {
       return NextResponse.json({ ok: true });
@@ -100,7 +90,7 @@ export async function POST(request: Request) {
 
     const status = payment.status || null;
     const nowIso = new Date().toISOString();
-    const existingAsaas = orderData.asaas || {};
+    const existingAsaas = (orderData.asaas || {}) as any;
 
     const patchAsaas = {
       ...existingAsaas,
@@ -111,21 +101,10 @@ export async function POST(request: Request) {
       paidAt: isPaidStatus(status) ? (payment.paymentDate || payment.confirmedDate || nowIso) : (existingAsaas.paidAt || null),
     };
 
-    // Atualizar pedido
-    await supabase
-      .from('orders')
-      .update({ asaas: patchAsaas })
-      .eq('id', orderId);
-
-    // Atualizar tabela de pagamentos Asaas (se existir)
-    await supabase
-      .from('asaas_payments')
-      .upsert({
-        orderId,
-        status,
-        lastEvent: event,
-        updatedAt: nowIso,
-      }, { onConflict: 'orderId' });
+    await db.order.update({
+      where: { id: orderId },
+      data: { asaas: patchAsaas },
+    });
 
     return NextResponse.json({ ok: true });
   } catch (e) {
