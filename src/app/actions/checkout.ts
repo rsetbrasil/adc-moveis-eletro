@@ -3,7 +3,12 @@
 import { db } from '@/lib/db';
 import { CustomerInfo, Order } from '@/lib/types';
 
-export async function findCustomerByCpfAction(cpf: string) {
+export type FindCustomerResult =
+    | { success: true; data: CustomerInfo; source: 'active' | 'trash' }
+    | { success: true; data: null; source?: never }
+    | { success: false; error: string; data?: never; source?: never };
+
+export async function findCustomerByCpfAction(cpf: string): Promise<FindCustomerResult> {
     try {
         const customer = await db.customer.findUnique({
             where: { cpf }
@@ -11,10 +16,6 @@ export async function findCustomerByCpfAction(cpf: string) {
         if (customer) return { success: true, data: customer as unknown as CustomerInfo, source: 'active' };
 
         // Assuming CustomerTrash model is defined as 'customerTrash' via map "customers_trash"
-        // In schema.prisma: model CustomerTrash ... @@map("customers_trash")
-        // Prisma Client accessor: db.customerTrash (camelCase of model name) or db.customers_trash? Usually model name.
-        // My model name was `CustomerTrash`.
-
         const trash = await db.customerTrash.findFirst({
             where: { cpf }
         });
@@ -27,20 +28,21 @@ export async function findCustomerByCpfAction(cpf: string) {
     }
 }
 
-export async function allocateNextCustomerCodeAction() {
+export async function allocateNextCustomerCodeAction(): Promise<{ success: true; code: string }> {
     return { success: true, code: `CLI-${Date.now().toString().slice(-6)}` };
 }
 
 export type CreateOrderResult =
-    | { success: true; orderId: string }
-    | { success: false; error: string };
+    | { success: true; orderId: string; error?: never }
+    | { success: false; error: string; orderId?: never };
 
 export async function createOrderAction(orderData: any, customerData: any): Promise<CreateOrderResult> {
     try {
-        return await db.$transaction(async (tx) => {
+        // @ts-ignore
+        const result = await db.$transaction(async (tx) => {
             // 1. Check stock and deduct for catalog products only
             for (const item of orderData.items) {
-                // Skip custom products (they don't exist in database)
+                // Skip custom products
                 if (item.id.startsWith('CUSTOM-')) {
                     continue;
                 }
@@ -63,7 +65,7 @@ export async function createOrderAction(orderData: any, customerData: any): Prom
                 });
             }
 
-            // 3. Save Order (remove firstDueDate as it's not in schema)
+            // 3. Save Order
             const { firstDueDate, ...orderToSave } = orderData;
             // @ts-ignore
             await tx.order.create({
@@ -80,9 +82,11 @@ export async function createOrderAction(orderData: any, customerData: any): Prom
 
             return { success: true, orderId: orderData.id };
         });
+
+        return result as CreateOrderResult;
+
     } catch (error: any) {
         console.error('Order creation failed:', error);
-        return { success: false, error: error.message };
+        return { success: false, error: error.message || 'Erro desconhecido ao criar pedido.' };
     }
 }
-
