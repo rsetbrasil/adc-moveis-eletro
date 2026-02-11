@@ -456,7 +456,10 @@ export default function CheckoutForm() {
 
       const result = await createOrderAction(payload, customerPayload);
 
-      if (!result.success) throw new Error(result.error);
+      if (!result.success) {
+        const message = 'error' in result ? String(result.error) : 'Erro desconhecido ao criar pedido.';
+        throw new Error(message);
+      }
 
       setLastOrder(orderToSave);
 
