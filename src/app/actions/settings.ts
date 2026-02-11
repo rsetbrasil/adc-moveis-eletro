@@ -3,8 +3,8 @@
 import { db } from '@/lib/db';
 import { StoreSettings } from '@/lib/types';
 
-// Configurações padrão (não exportado - apenas para uso interno)
-const initialSettings: StoreSettings = {
+// Configurações padrão
+export const initialSettings: StoreSettings = {
     storeName: 'ADC Móveis',
     storeCity: '',
     storeAddress: '',
