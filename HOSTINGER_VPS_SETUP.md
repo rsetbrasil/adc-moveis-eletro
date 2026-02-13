@@ -10,6 +10,8 @@ Este guia descreve o passo a passo para:
 6. Subir o sistema em produção (PM2) e publicar via Nginx
 
 IP informado: `158.69.218.15`  
+Observação: o IP é usado para acessar/configurar a VPS e para apontar o DNS. O site deve ser acessado via domínio (produção).  
+Observação: o banco é local na VPS, então o `DATABASE_URL` usa `localhost`.  
 Repositório Git: `https://github.com/rsetbrasil/adc-moveis-eletro.git`
 
 ---
@@ -221,7 +223,7 @@ systemctl reload nginx
 
 Acessar:
 
-- `http://158.69.218.15`
+- `http://158.69.218.15` (apenas para teste inicial; em produção use o domínio)
 
 ---
 
@@ -266,4 +268,3 @@ No painel do Asaas, configure:
   ```bash
   systemctl reload nginx
   ```
-
