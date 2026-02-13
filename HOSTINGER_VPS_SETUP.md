@@ -9,9 +9,8 @@ Este guia descreve o passo a passo para:
 5. Migrar dados do Supabase para o MySQL local (rodando na VPS)
 6. Subir o sistema em produção (PM2) e publicar via Nginx
 
-IP informado: `158.69.218.15`  
-Observação: o IP é usado para acessar/configurar a VPS e para apontar o DNS. O site deve ser acessado via domínio (produção).  
-Observação: o banco é local na VPS, então o `DATABASE_URL` usa `localhost`.  
+Observação: o `localhost` é usado para tudo que é interno na VPS (MySQL e proxy do Nginx para o Node). O acesso público ao site deve ser via domínio (produção).  
+Observação: o IP da VPS é usado para SSH e para apontar o DNS do domínio.  
 Repositório Git: `https://github.com/rsetbrasil/adc-moveis-eletro.git`
 
 ---
@@ -21,7 +20,7 @@ Repositório Git: `https://github.com/rsetbrasil/adc-moveis-eletro.git`
 No seu computador:
 
 ```bash
-ssh root@158.69.218.15
+ssh root@SEU_IP_DA_VPS
 ```
 
 ---
@@ -185,7 +184,7 @@ pm2 logs adc --lines 200
 
 ---
 
-## 12) Configurar Nginx (acesso por IP inicialmente)
+## 12) Configurar Nginx (interno: localhost)
 
 Crie o arquivo:
 
@@ -193,11 +192,11 @@ Crie o arquivo:
 nano /etc/nginx/sites-available/adc
 ```
 
-Conteúdo (acesso por IP):
+Conteúdo (localhost):
 
 ```nginx
 server {
-  server_name 158.69.218.15;
+  server_name localhost _;
 
   location / {
     proxy_pass http://127.0.0.1:3000;
@@ -223,15 +222,16 @@ systemctl reload nginx
 
 Acessar:
 
-- `http://158.69.218.15` (apenas para teste inicial; em produção use o domínio)
+- Na própria VPS: `curl -I http://localhost`
+- No navegador (produção): use o domínio após apontar o DNS e habilitar SSL
 
 ---
 
 ## 13) Quando tiver domínio: apontar DNS + habilitar HTTPS (SSL)
 
-1. No DNS do domínio, crie registros **A** apontando para `158.69.218.15`:
-   - `@` → `158.69.218.15`
-   - `www` → `158.69.218.15`
+1. No DNS do domínio, crie registros **A** apontando para o IP da sua VPS:
+   - `@` → `SEU_IP_DA_VPS`
+   - `www` → `SEU_IP_DA_VPS`
 
 2. Ajuste o `server_name` do Nginx para:
    - `SEU_DOMINIO.com.br www.SEU_DOMINIO.com.br`
