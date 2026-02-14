@@ -14,10 +14,22 @@ import { generatePixPayload } from '@/lib/pix';
 import PixQRCode from '@/components/PixQRCode';
 import { cn } from '@/lib/utils';
 import { useData } from '@/context/DataContext';
-import { getSettingsAction, initialSettings } from '@/app/actions/settings';
+import { getSettingsAction } from '@/app/actions/settings';
 import { getOrderForCarnetAction } from '@/app/actions/orders-fetcher';
 
 // ... (imports remain the same, except supabase)
+
+const initialSettings: StoreSettings = {
+    storeName: 'ADC Móveis',
+    storeCity: '',
+    storeAddress: '',
+    pixKey: '',
+    storePhone: '',
+    logoUrl: '',
+    accessControlEnabled: false,
+    commercialHourStart: '08:00',
+    commercialHourEnd: '18:00',
+};
 
 const formatCurrency = (value: number) => {
     if (typeof value !== 'number' || Number.isNaN(value)) {
